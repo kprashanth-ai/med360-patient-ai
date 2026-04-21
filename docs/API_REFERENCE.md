@@ -1,180 +1,174 @@
-> Auto-generated on 2026-04-21 14:18 by `scripts/update_docs.py`. Do not edit manually.
+> Auto-generated on 2026-04-21 14:20 by `scripts/update_docs.py`. Do not edit manually.
 
 # API Reference
 
-This API serves as the AI intelligence layer for the Med360 patient app, enabling features like chat interaction, medical recommendations, and report processing. The base URL pattern for the API is `/api/v1`.
+Welcome to the API Reference for the Med360 Patient AI application. This API provides endpoints for chat interactions, session retrieval, generating health recommendations based on patient data, uploading and retrieving report analyses, and more. The base URL pattern for accessing these endpoints is structured as `/api/v1/{endpoint}`.
 
 ## Endpoints
 
 ### POST /chat
 
-**Description:**  
-This endpoint begins a chat session or continues an existing chat session. It is used for communication between users and the AI system.
+#### Description
+Initiate a chat session or continue an existing session with a message. This endpoint should be used when interacting with the chat service to inquire or provide information during the session.
 
-**Request Body:**
+#### Request Body
 
-| Field     | Type   | Required | Description                                |
-|-----------|--------|----------|--------------------------------------------|
-| user_id   | string | Yes      | Unique identifier for the user.            |
-| session_id| string | No       | Identifier for an existing chat session.   |
-| message   | string | Yes      | The user's message to the AI chatbot.      |
+| Field      | Type   | Required | Description                         |
+|------------|--------|----------|-------------------------------------|
+| user_id    | string | Yes      | The unique identifier for the user. |
+| session_id | string | No       | The session identifier, if continuing an existing session. |
+| message    | string | Yes      | The message content to be sent in this chat interaction. |
 
-**Response Body:**
+#### Response Body
 
-| Field     | Type    | Description                              |
-|-----------|---------|------------------------------------------|
-| session_id| string  | The session identifier.                  |
-| message   | string  | AI's response message.                   |
-| urgent    | boolean | Indicates if there's an urgent response. |
+| Field   | Type    | Description                            |
+|---------|---------|----------------------------------------|
+| session_id | string | The session identifier used or created. |
+| message | string  | Echo of the sent message or a response. |
+| urgent  | boolean | Flag indicating if the response needs urgent attention. |
 
-**Example Request:**
+#### Example Request
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/chat" \
 -H "Content-Type: application/json" \
--d '{"user_id": "user123", "message": "Hello AI"}'
+-d '{"user_id": "12345", "message": "Hello, I need some advice."}'
 ```
 
-**Example Response:**
+#### Example Response
 
 ```json
 {
-  "session_id": "sess567",
-  "message": "Hello, how can I assist you today?",
+  "session_id": "abc123",
+  "message": "Hello, I need some advice.",
   "urgent": false
 }
 ```
 
 ### GET /session/{session_id}
 
-**Description:**  
-Fetches detailed information about a specific chat session.
+#### Description
+Retrieve details of a specific chat session by its session ID. Use this endpoint to track or obtain historical chat information.
 
-**Example Request:**
+#### Response Body
+
+Varies based on stored session details. Typically includes state and history of the session.
+
+#### Example Request
 
 ```bash
-curl -X GET "http://localhost:8000/api/v1/session/sess567"
-```
-
-**Example Response:**
-
-```json
-{
-  "session_id": "sess567",
-  "messages": [
-    {"from": "user", "content": "Hello AI"},
-    {"from": "ai", "content": "Hello, how can I assist you today?"}
-  ]
-}
+curl "http://localhost:8000/api/v1/session/abc123"
 ```
 
 ### POST /recommend
 
-**Description:**  
-Provides medical recommendations based on patient symptoms and conditions.
+#### Description
+Receive health recommendations based on patient details such as age, gender, and symptoms. Use this to get AI-generated guidance tailored to patient input.
 
-**Request Body:**
+#### Request Body
 
-| Field         | Type   | Required | Description                              |
-|---------------|--------|----------|------------------------------------------|
-| age           | int    | Yes      | Age of the patient.                      |
-| gender        | string | Yes      | Gender of the patient.                   |
-| severity      | string | Yes      | Severity of the condition.               |
-| duration_days | int    | Yes      | Duration of symptoms in days.            |
-| symptoms      | string | Yes      | Summary of the symptoms.                 |
+| Field        | Type   | Required | Description                             |
+|--------------|--------|----------|-----------------------------------------|
+| age          | int    | Yes      | Age of the patient.                     |
+| gender       | string | Yes      | Gender of the patient.                  |
+| severity     | string | Yes      | Severity of the presented symptoms.     |
+| duration_days| int    | Yes      | Duration for which symptoms persisted.  |
+| symptoms     | string | Yes      | Description of symptoms.                |
 
-**Response Body:**
+#### Response Body
 
-| Field               | Type   | Description                                     |
-|---------------------|--------|-------------------------------------------------|
-| urgency_level       | string | Urgency level of the condition.                 |
-| next_step           | string | Recommended next step for the patient.          |
-| suggested_specialty | string | Recommended specialty if applicable.            |
-| patient_message     | string | Message for the patient regarding the next steps.|
-| reasoning           | string | Explanation of the recommendation.              |
+| Field             | Type   | Description                                        |
+|-------------------|--------|----------------------------------------------------|
+| session_id        | string | Identifier for the recommendation session.         |
+| urgency_level     | string | Urgency level: low, moderate, high, emergency.     |
+| next_step         | string | Suggested next action: monitor, teleconsult, etc.  |
+| suggested_specialty | string | Suggested specialty for consultation, if applicable. |
+| patient_message   | string | Message intended for patient guidance.             |
+| reasoning         | string | Explanation of the recommendation.                 |
 
-**Example Request:**
+#### Example Request
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/recommend" \
 -H "Content-Type: application/json" \
--d '{"age": 30, "gender": "male", "severity": "high", "duration_days": 5, "symptoms": "fever, cough"}'
+-d '{"age": 45, "gender": "female", "severity": "moderate", "duration_days": 3, "symptoms": "headache and dizziness"}'
 ```
 
-**Example Response:**
+#### Example Response
 
 ```json
 {
-  "urgency_level": "high",
+  "session_id": "rec456",
+  "urgency_level": "moderate",
   "next_step": "teleconsult",
-  "suggested_specialty": "Pulmonologist",
-  "patient_message": "We recommend a teleconsult with a specialist.",
-  "reasoning": "Given the high severity and presented symptoms, a pulmonologist is advisable."
+  "suggested_specialty": "neurology",
+  "patient_message": "We suggest a teleconsult with a neurologist.",
+  "reasoning": "The symptoms suggest possible neurological issues."
 }
 ```
 
 ### POST /reports/upload
 
-**Description:**  
-Uploads a medical report for analysis and explanation of findings.
+#### Description
+Upload a clinical report for analysis and receive detailed findings. Use when you need insights and explanations from document data.
 
-**Request Body:**
+#### Request Body
 
-Field: 
+| Field      | Type       | Required | Description                                                   |
+|------------|------------|----------|---------------------------------------------------------------|
+| session_id | string     | Yes      | Identifier for the analysis session.                         |
+| file       | UploadFile | Yes      | The report file to be uploaded and analyzed.                  |
 
-- `session_id` (form-data, required): Session identifier for the current operation.
-- `file` (form-data, required): Report file to be uploaded.
+#### Response Body
 
-**Response Body:**
+| Field       | Type  | Description                                     |
+|-------------|-------|-------------------------------------------------|
+| session_id  | string| The analysis session identifier.                |
+| findings    | dict  | Key findings extracted from the report.         |
+| explanation | string| Detailed explanation of the findings.           |
 
-| Field      | Type  | Description                             |
-|------------|-------|-----------------------------------------|
-| session_id | string| The session identifier.                 |
-| findings   | dict  | Interpreted findings from the report.   |
-| explanation| string| Explanation of the findings.            |
-
-**Example Request:**
+#### Example Request
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/reports/upload" \
--F "session_id=sess789" \
--F "file=@report.pdf"
+-F "session_id=ses789" \
+-F "file=@/path/to/report.pdf"
 ```
 
-**Example Response:**
+#### Example Response
 
 ```json
 {
-  "session_id": "sess789",
-  "findings": {"blood_pressure": "140/90", "unusual_markers": "true"},
-  "explanation": "Elevated blood pressure noted, markers suggest further investigation necessary."
+  "session_id": "ses789",
+  "findings": {
+    "blood_pressure": "normal",
+    "cholesterol": "elevated"
+  },
+  "explanation": "Cholesterol levels are above normal, suggesting a need for dietary consultation."
 }
 ```
 
 ### GET /reports/{report_id}
 
-**Description:**  
-Retrieves a specific report by its ID.
+#### Description
+Retrieve a processed report by its ID. Use for accessing previously generated analyses.
 
-**Example Request:**
+#### Response Body
+
+Contents depend on the specific report queried. Typically includes findings and analytical notes.
+
+#### Example Request
 
 ```bash
-curl -X GET "http://localhost:8000/api/v1/reports/report123"
-```
-
-**Example Response:**
-
-```json
-{
-  "report_id": "report123",
-  "session_id": "sess789",
-  "findings": {"blood_pressure": "140/90", "unusual_markers": "true"},
-  "explanation": "Elevated blood pressure noted, markers suggest further investigation necessary."
-}
+curl "http://localhost:8000/api/v1/reports/123456"
 ```
 
 ## Error Responses
 
-- `400 Bad Request` - The request was malformed or missing required fields.
-- `404 Not Found` - The requested resource does not exist.
-- `500 Internal Server Error` - An unexpected error occurred on the server.
+- 400 Bad Request: Invalid input data provided.
+- 401 Unauthorized: Authentication failed.
+- 403 Forbidden: Access to the resource is denied.
+- 404 Not Found: The requested resource does not exist.
+- 500 Internal Server Error: A server side error occurred.
+
+This API is designed to facilitate interactions with patient data and provide insights through AI-driven analysis. Ensure all payloads are correctly formatted and valid to receive optimal responses.
