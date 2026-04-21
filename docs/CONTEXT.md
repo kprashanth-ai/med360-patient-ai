@@ -1,7 +1,12 @@
+---
+tags: [reference, orientation]
+---
+
 # Med360 Patient AI — Session Context
 
 > Claude reads this file at the start of every session to get oriented fast.
 > Also read [[PROGRESS]] before starting work.
+> See [[DECISIONS]] for why key choices were made. See [[SESSION_LOG]] for history.
 
 ## What we're building
 A **FastAPI + JSON-file AI backend** for the Med360 patient app — a patient-facing health guidance and report interpretation system. NOT a diagnosis engine.

@@ -1,6 +1,11 @@
+---
+tags: [decisions, architecture]
+---
+
 # Architecture Decisions
 
 > Short entries only. WHY we chose something, not what it is.
+> See [[CONTEXT]] for how the project is structured. See [[ROADMAP]] for pending decisions.
 
 ---
 

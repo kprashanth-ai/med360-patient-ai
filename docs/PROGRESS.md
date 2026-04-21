@@ -1,6 +1,11 @@
+---
+tags: [progress, tracking]
+---
+
 # Build Progress
 
 > Update after each session. Claude reads this to know where to pick up.
+> See [[SESSION_LOG]] for narrative history. See [[ROADMAP]] for what comes after.
 
 ---
 

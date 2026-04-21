@@ -130,11 +130,20 @@ Start with: # Data Models
 
 # ── writer ─────────────────────────────────────────────────────────────────────
 
+_FRONTMATTER = {
+    "API_REFERENCE.md": "tags: [api, reference, auto-generated]",
+    "MODULES.md":       "tags: [modules, reference, auto-generated]",
+    "DATA_MODELS.md":   "tags: [models, reference, auto-generated]",
+}
+
+
 def write_doc(filename: str, content: str):
     path = DOCS / filename
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    fm = _FRONTMATTER.get(filename, "")
+    frontmatter = f"---\n{fm}\nupdated: \"{timestamp}\"\n---\n\n" if fm else ""
     header = f"> Auto-generated on {timestamp} by `scripts/update_docs.py`. Do not edit manually.\n\n"
-    path.write_text(header + content, encoding="utf-8")
+    path.write_text(frontmatter + header + content, encoding="utf-8")
     print(f"  Written -> docs/{filename}")
 
 
