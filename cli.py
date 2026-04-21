@@ -53,26 +53,52 @@ async def animate_analyzing():
         await asyncio.sleep(0.4)
 
 
+def _input_int(prompt: str, min_val: int, max_val: int) -> int:
+    while True:
+        try:
+            val = int(input(prompt).strip())
+            if min_val <= val <= max_val:
+                return val
+            print(Fore.RED + f"    Must be between {min_val} and {max_val}." + Style.RESET_ALL)
+        except ValueError:
+            print(Fore.RED + "    Please enter a valid number." + Style.RESET_ALL)
+
+
+def _input_choice(prompt: str, choices: list[str]) -> str:
+    while True:
+        val = input(prompt).strip().lower()
+        if val in choices:
+            return val
+        print(Fore.RED + f"    Must be one of: {', '.join(choices)}." + Style.RESET_ALL)
+
+
+def _input_symptoms(prompt: str) -> str:
+    while True:
+        val = input(prompt).strip()
+        if len(val) < 10:
+            print(Fore.RED + "    Please describe your symptoms in more detail (min 10 characters)." + Style.RESET_ALL)
+        elif len(val) > 1000:
+            print(Fore.RED + "    Too long — please keep it under 1000 characters." + Style.RESET_ALL)
+        else:
+            return val
+
+
 async def run_recommend():
     header("Med360 — Specialist Recommender")
 
     print(Style.BRIGHT + "\n  Tell us about the patient:\n")
-    age      = int(input("    Age                    : ").strip())
-    gender   = input("    Gender (male/female)   : ").strip().lower()
-    severity = input("    Severity (low/med/high): ").strip().lower()
-    duration = int(input("    Duration (days)        : ").strip())
-    symptoms = input("    Symptoms               : ").strip()
-
-    if not symptoms:
-        print(Fore.RED + "\n  No symptoms provided.")
-        return
+    age      = _input_int("    Age                    : ", 1, 120)
+    gender   = _input_choice("    Gender (male/female/other): ", ["male", "female", "other"])
+    severity = _input_choice("    Severity (low/medium/high): ", ["low", "medium", "high"])
+    duration = _input_int("    Duration (days)        : ", 1, 3650)
+    symptoms = _input_symptoms("    Symptoms               : ")
 
     patient_info = build_patient_info(age, gender, severity, duration, symptoms)
 
     print()
     spinner = asyncio.create_task(animate_analyzing())
     try:
-        data, model_used, usage_entry = await get_recommendation(patient_info)
+        data, model_used, usage_entry, session_id = await get_recommendation(patient_info)
     except RuntimeError as e:
         spinner.cancel()
         print(Fore.RED + f"\n  Error: {e}")
@@ -112,6 +138,7 @@ async def run_recommend():
         print("  " + Fore.WHITE + Style.DIM + line + Style.RESET_ALL)
 
     section("Usage")
+    row("Session ID",     session_id)
     row("Model",          model_used)
     row("Tokens",
         f"{usage_entry.get('total_tokens')} "

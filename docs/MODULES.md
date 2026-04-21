@@ -1,206 +1,121 @@
-> Auto-generated on 2026-04-21 14:20 by `scripts/update_docs.py`. Do not edit manually.
+> Auto-generated on 2026-04-21 14:40 by `scripts/update_docs.py`. Do not edit manually.
 
 # Module Reference
 
-This document provides an architectural overview of the Med360 application, detailing how its different modules and services interact to fulfill patient requests. Each module description includes its purpose, key functions, classes, inputs, outputs, dependencies, and usage examples. A section on data flow explains how patient requests are processed through the system.
-
 ## Architecture Overview
 
-The Med360 application consists of several modules and services that interact to process patient requests:
-- **Chatbot**: Engages with patients, gathers information, and provides responses or follow-up questions.
-- **Recommender**: Analyzes clinical state data to generate medical recommendations.
-- **Report Interpreter**: Parses and explains diagnostic reports.
-- **Core**: Orchestrates the session management and data flow.
-- **Services**: Provides utilities for file operations and interactions with the OpenAI API.
-- **Prompts**: Contains system prompts and configurations used by modules.
-- **Tracker**: Monitors and records usage analytics.
+The system is designed as a modular healthcare AI platform to assist with patient guidance by using NLP and ML technologies powered by the OpenAI API. It consists of several interconnected modules, each serving a specific purpose in handling patient data, generating recommendations, parsing reports, and managing sessions.
 
-Data flow typically starts with a patient message entry, followed by information extraction, red flag detection, and then either follow-up or recommendation delivery. Each module contributes a specific function to this chain, ensuring a comprehensive and guided interaction for the patient.
+- **Chatbot Modules**: Handles patient interaction, generates responses, and follows up on missing information.
+- **Recommender Modules**: Provides healthcare recommendations, considering red flags to assess urgency.
+- **Report Interpreter Modules**: Parses and explains medical reports using AI prompts.
+- **Core Logic**: Orchestrates the overall flow of the patient interaction and manages sessions.
+- **Services**: Provides utility services such as file management, API client interactions, storage functions, and session tracking.
 
 ## Modules and Services
 
-### 1. Chatbot - Follow-up
+### Chatbot Followup Module
 
-- **Purpose**: Generate follow-up questions based on missing clinical information.
+- **Purpose**: Generates follow-up questions for patients based on their provided clinical state.
 - **Key Functions**:
-  - `generate_followup(clinical_state: dict) -> str`: Asynchronously generates a follow-up question.
-- **Inputs**: Clinical state dictionary with missing information.
-- **Outputs**: String containing the follow-up question.
+  - `generate_followup(clinical_state: dict) -> str`: Asynchronously generates a follow-up question based on missing patient information using the OpenAI chat API.
+- **Inputs**: A dictionary `clinical_state` with patient information including a list of missing data points.
+- **Outputs**: A string containing a follow-up question.
 - **Dependencies**: Imports `chat_completion` from `app.services.openai_client` and `FOLLOWUP_SYSTEM_PROMPT` from `app.prompts.chatbot_prompts`.
-- **Usage Example**:
-  ```python
-  missing_info = {"missing_info": ["duration", "severity"]}
-  followup_question = await generate_followup(missing_info)
-  ```
 
-### 2. Chatbot - Handler
+### Chatbot Handler Module
 
-- **Purpose**: Construct responses to patient queries based on clinical state and recommendations.
+- **Purpose**: Constructs appropriate responses for patient inquiries.
 - **Key Functions**:
-  - `build_response(clinical_state: dict, recommendation: dict) -> str`: Asynchronously builds a patient response.
-- **Inputs**: Clinical state and recommendation dictionaries.
-- **Outputs**: Response string.
+  - `build_response(clinical_state: dict, recommendation: dict) -> str`: Asynchronously builds a chatbot response considering the clinical state and recommendation.
+- **Inputs**: Two dictionaries, `clinical_state` and `recommendation`.
+- **Outputs**: A string formatted as a complete response.
 - **Dependencies**: Uses `chat_completion` from `app.services.openai_client` and `RESPONSE_SYSTEM_PROMPT` from `app.prompts.chatbot_prompts`.
-- **Usage Example**:
-  ```python
-  response = await build_response(clinical_state, recommendation)
-  ```
 
-### 3. Recommender - Engine
+### Recommender Engine Module
 
-- **Purpose**: Define data models for medical recommendations.
+- **Purpose**: Structures the healthcare recommendations based on patient symptoms.
 - **Key Classes**:
-  - `SpecialistPathwayItem`: Contains specialist type and reason for recommendation.
-  - `RecommendationResult`: Models the structure of a recommendation outcome.
-- **Inputs**: None (model definitions).
-- **Outputs**: Defined data structures.
-- **Dependencies**: None.
-- **Usage Example**:
-  ```python
-  recommendation = RecommendationResult(
-      recommended_specialist="cardiologist",
-      primary_recommendation_summary="Consult a cardiologist.",
-      symptom_explanation="Symptoms suggest heart-related issues.",
-      specialist_pathway=[SpecialistPathwayItem(specialist="cardiologist", reason="heart symptoms")],
-      red_flags=["chest pain"],
-      urgency_level="high",
-      next_step="teleconsult",
-      disclaimer="This is not a diagnosis."
-  )
-  ```
+  - `SpecialistPathwayItem(BaseModel)`, `RecommendationResult(BaseModel)`: Pydantic models defining the expected structure of the recommendation results.
+- **Outputs**: A structured response aligning with the recommendation model.
+- **Dependencies**: Utilizes Pydantic for data modeling.
 
-### 4. Recommender - Red Flags
+### Recommender Red Flags Module
 
-- **Purpose**: Detect red-flag symptoms from the clinical state.
+- **Purpose**: Identifies urgent health-related symptoms indicating a possible emergency.
 - **Key Functions**:
-  - `detect_red_flags(clinical_state: dict) -> bool`: Checks for urgent or severe symptoms.
-- **Inputs**: Clinical state dictionary.
-- **Outputs**: Boolean indicating presence of red flags.
-- **Dependencies**: None.
-- **Usage Example**:
-  ```python
-  has_red_flags = await detect_red_flags(clinical_state)
-  ```
+  - `detect_red_flags(clinical_state: dict) -> bool`: Checks clinical states for emergency red flag keywords.
+- **Inputs**: Dictionary `clinical_state` with patient symptoms.
+- **Outputs**: Boolean indicating the presence of red flag symptoms.
 
-### 5. Report Interpreter - Explainer
+### Report Interpreter Explainer Module
 
-- **Purpose**: Explain medical report findings to patients in simple terms.
+- **Purpose**: Transforms structured report findings into patient-friendly language explanations.
 - **Key Functions**:
-  - `explain_findings(findings: dict) -> str`: Asynchronously explains diagnostic findings.
-- **Inputs**: Dictionary of findings.
-- **Outputs**: Explanation string.
-- **Dependencies**: Uses `chat_completion` from `app.services.openai_client` and `REPORT_EXPLANATION_PROMPT`.
-- **Usage Example**:
-  ```python
-  explanation = await explain_findings(report_findings)
-  ```
+  - `explain_findings(findings: dict) -> str`: Explains report findings using simple language.
+- **Inputs**: Dictionary of findings from the parsed medical report.
+- **Outputs**: String explanation of the findings.
 
-### 6. Report Interpreter - Parser
+### Report Interpreter Parser Module
 
-- **Purpose**: Parse and store diagnostic reports.
+- **Purpose**: Parses uploaded medical reports to extract structured information.
 - **Key Functions**:
-  - `parse_report(file: UploadFile, session_id: str) -> dict`: Processes and extracts content from uploaded files.
-- **Inputs**: File to parse and session ID.
-- **Outputs**: Parsed findings dictionary.
-- **Dependencies**: Imports several services for file reading and database storage.
-- **Usage Example**:
-  ```python
-  parsed_data = await parse_report(uploaded_file, user_session_id)
-  ```
+  - `parse_report(file: UploadFile, session_id: str) -> dict`: Extracts text data from uploaded documents and converts it into a structured format.
+  - `_extract_text`: Internal utility to deal with different file formats.
+- **Inputs**: `UploadFile` object and a `session_id`.
+- **Outputs**: Dictionary of parsed findings.
+- **Dependencies**: Interfaces with `structured_completion` from `openai_client` and file I/O utilities.
 
-### 7. Services - File Service
+### File Service Module
 
-- **Purpose**: Handle file storage and removal operations.
+- **Purpose**: Manages file storage and deletion tasks.
 - **Key Functions**:
-  - `save_upload(filename: str, contents: bytes) -> str`: Saves file data.
-  - `delete_upload(filename: str)`: Deletes a specified file.
-- **Inputs**: File names and data.
-- **Outputs**: File path or deletion side-effects.
-- **Dependencies**: None.
-- **Usage Example**:
-  ```python
-  path = save_upload("report.pdf", file_contents)
-  delete_upload("report.pdf")
-  ```
+  - `save_upload(filename: str, contents: bytes) -> str`: Saves uploaded files to the disk.
+  - `delete_upload(filename: str)`: Deletes file from storage.
+- **Inputs**: Filename and file contents for saving; filename for deletion.
+- **Outputs**: File path of saved files.
 
-### 8. Services - LLM
+### LLM Service Module
 
-- **Purpose**: Initiate and process recommendations using language model interactions.
+- **Purpose**: Constructs patient data into structured information for use with the language model.
 - **Key Functions**:
-  - `build_patient_info(...) -> str`: Creates a textual patient info summary.
-  - `get_recommendation(...) -> tuple`: Calls LLM for recommendations.
-- **Inputs**: Patient data in structured form.
-- **Outputs**: Recommendation and usage metrics.
-- **Dependencies**: Relies on `app.services.openai_client` and the `RecommendationResult` model.
-- **Usage Example**:
-  ```python
-  patient_info_str = build_patient_info(30, "female", "moderate", 7, "fever, fatigue")
-  result, used_model, usage = await get_recommendation(patient_info_str)
-  ```
+  - `build_patient_info(age: int, gender: str, severity: str, duration: int, symptoms: str) -> str`: Creates a structured string.
+  - `get_recommendation(patient_info: str) -> tuple`: Generates health recommendations and tracks API usage.
+- **Inputs**: Patient information string.
+- **Outputs**: Recommendation result and analytics.
 
-### 9. Services - OpenAI Client
+### OpenAI Client Service Module
 
-- **Purpose**: Interact with OpenAI's API for chat and structured completions.
+- **Purpose**: Interfaces with OpenAI's API for structured completions.
 - **Key Functions**:
-  - `structured_completion(...) -> tuple`: Handles LLM result parsing and usage accounting.
-- **Inputs**: Prompts, messages, and response models.
-- **Outputs**: Structured response and analytics data.
-- **Dependencies**: Depends on `openai` and project-specific configs.
-- **Usage Example**:
-  ```python
-  response, model, usage = await structured_completion(prompt, message, ResponseModel)
-  ```
+  - `structured_completion(system_prompt: str, user_message: str, response_model: Type[T]) -> tuple`: Sends and receives parsed results from the OpenAI API.
+- **Inputs**: Prompts and message content.
+- **Outputs**: Parsed results conforming to given model class.
 
-### 10. Core - Orchestrator
+### Storage Service Module
 
-- **Purpose**: Coordinate the workflow from patient message to chatbot response.
+- **Purpose**: Manages session data through file storage operations.
 - **Key Functions**:
-  - `handle_chat(request: ChatRequest) -> ChatResponse`: Full chat processing pipeline.
-- **Inputs**: `ChatRequest` structured object.
-- **Outputs**: `ChatResponse` structured object.
-- **Dependencies**: Multiple core functions and modules from chatbot, recommender, and state extractor.
-- **Usage Example**:
-  ```python
-  response = await handle_chat(chat_request)
-  ```
+  - `save_session`: Saves session data to storage.
+  - `load_session`: Loads session data from storage.
+  - `list_sessions`: Lists recent sessions.
+- **Dependencies**: Relies on JSON and filesystem libraries for data management.
 
-### 11. Core - Session Manager
+### Tracker Module
 
-- **Purpose**: Manage and persist session data.
+- **Purpose**: Tracks API usage and calculates related costs.
 - **Key Functions**:
-  - `load_or_create_session(...)`: Initiates or retrieves a session.
-  - `save_message(...)`: Logs conversation messages.
-- **Inputs**: Session identifiers and message contents.
-- **Outputs**: Session dictionary structures.
-- **Dependencies**: Uses database interaction helpers.
-- **Usage Example**:
-  ```python
-  session = await load_or_create_session(None, "user_id_123")
-  ```
+  - `record_usage(usage_entry: dict)`: Increments the session state with usage entries.
+  - `get_session_totals() -> dict`: Retrieves aggregate usage statistics.
 
-### 12. Core - State Extractor
+## Data Flow Overview
 
-- **Purpose**: Develop clinical state understanding from conversation data.
-- **Key Functions**:
-  - `extract_clinical_state(...)`: Asynchronously converts messages into a structured clinical state.
-- **Inputs**: User message and session context.
-- **Outputs**: Clinical state as a dictionary.
-- **Dependencies**: Operates with the OpenAI client and database collations.
-- **Usage Example**:
-  ```python
-  clinical_state = await extract_clinical_state("I feel dizzy and have a headache", session_data)
-  ```
+1. **Patient Request Entry**: The user sends a message via a chatbot interface, initiating a session.
+2. **Session Management**: The `session_manager` ensures the session is loaded or created.
+3. **Clinical State Extraction**: `state_extractor` pulls structured data from the message.
+4. **Red Flag Detection**: Interpreted message is analyzed for emergency signals in the `red_flags` module.
+5. **Follow-up and Recommendation**: If necessary, a follow-up is generated; otherwise, a recommendation process begins, leveraging the `recommender` module.
+6. **Response Generation**: Compiles all data and creates a response using `chatbot.handler`.
+7. **Result Delivery**: The system responds to the patient with advice, escalating if red flags are detected.
 
-## Data Flow
-
-1. **Patient Message Received**: A new message from the patient is received (`handle_chat`).
-2. **Session Management**: Session is loaded or created to track conversation (`load_or_create_session`).
-3. **State Extraction**: The message and session history are processed to extract clinical data (`extract_clinical_state`).
-4. **Red Flag Detection**: Checks clinical state for urgent symptoms (`detect_red_flags`).
-5. **Follow-up Generation**: If missing information is found, generates a follow-up question (`generate_followup`).
-6. **Recommendation Generation**: For complete state data, recommendations are formulated (`get_recommendation`).
-7. **Response Construction**: Based on the clinical state and recommendations, a patient response is generated (`build_response`).
-8. **Saving Messages**: Each interaction is logged to the session history (`save_message`).
-9. **Response Delivery**: A `ChatResponse` is crafted and sent back to the patient.
-
-The detailed collaboration of components enables Med360 to offer real-time, structured guidance and recommendations effectively.
+This document lays out module responsibilities and connections, supporting developers in understanding and extending the platform effectively.
