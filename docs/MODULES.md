@@ -1,198 +1,248 @@
-> Auto-generated on 2026-04-21 14:50 by `scripts/update_docs.py`. Do not edit manually.
+> Auto-generated on 2026-04-21 17:10 by `scripts/update_docs.py`. Do not edit manually.
 
 # Module Reference
 
+This document provides an overview and reference guide for various components of the healthcare platform system. It includes service modules, core logic, and processing capabilities. The architecture is designed to handle patient interactions, report parsing, and recommendation generation.
+
 ## Architecture Overview
-The architecture is composed of various modules and services designed for clinical patient interaction, document processing, and response generation. The system leverages OpenAI models for generating clinical pathways and interpreting medical reports. It integrates several modules like `chatbot`, `recommender`, `report_interpreter`, core logic (`orchestrator`, `session_manager`, `state_extractor`), and client utility services (`openai_client`, `file_service`, `storage`) to achieve its functionalities.
 
-## Modules and Services
+The architecture consists of:
+- **Chatbot modules**: Handle patient interactions, collect clinical data, and generate follow-ups.
+- **Recommender modules**: Provide health recommendations based on collected data.
+- **Report interpreter modules**: Analyze and summarize medical reports.
+- **Services**: Provide core functionalities such as chat management and file handling.
+- **Prompts**: Text templates used by the OpenAI API for processing requests.
+  
+The data flow typically starts with a patient interaction in the chatbot, utilizes the recommender system to generate advice, and potentially evaluates uploaded medical reports.
 
-### Chatbot Follow-Up Module (`app/modules/chatbot/followup.py`)
-- **Purpose:** 
-  To generate follow-up questions based on missing clinical information from the patient.
-- **Key Function:**
-  - `async def generate_followup(clinical_state: dict) -> str`: Uses the structured `clinical_state` to generate follow-up questions.
-- **Inputs:** A dictionary representing the clinical state of the patient.
-- **Outputs:** A follow-up question as a string.
-- **Dependencies:** Imports `chat_completion` from `openai_client` and prompt `FOLLOWUP_SYSTEM_PROMPT` from `chatbot_prompts`.
-- **Example:**
-  ```python
-  followup_question = await generate_followup(clinical_state)
-  ```
+## Chatbot Module: `engine.py`
 
-### Chatbot Handler Module (`app/modules/chatbot/handler.py`)
-- **Purpose:** 
-  To build a response from the chatbot using the patient's clinical state and recommendations.
-- **Key Function:**
-  - `async def build_response(clinical_state: dict, recommendation: dict) -> str`: Forms a response incorporating the patient's state and provided recommendations.
-- **Inputs:** Clinical state and recommendation dictionaries.
-- **Outputs:** A response string.
-- **Dependencies:** Uses `chat_completion` from `openai_client` and `RESPONSE_SYSTEM_PROMPT` from `chatbot_prompts`.
-- **Example:**
-  ```python
-  response = await build_response(clinical_state, recommendation)
-  ```
+### Purpose
+Defines the structure for patient data and chatbot interaction within a chat turn.
 
-### Recommender Engine Module (`app/modules/recommender/engine.py`)
-- **Purpose:** 
-  Manages the structure of recommendation results including pathways and red flags.
-- **Key Classes:**
-  - `SpecialistPathwayItem(BaseModel)`: Describes a specialist pathway item.
-  - `RecommendationResult(BaseModel)`: Contains information about recommendations.
-- **Inputs:** N/A (data model definitions).
-- **Outputs:** Structured data for recommendations.
-- **Dependencies:** N/A.
-- **Example:**
-  ```python
-  recommendation = RecommendationResult(...)
-  ```
+### Key Classes
+- **CollectedPatientData**: Contains fields such as age, gender, severity, duration, and symptoms.
+- **ChatTurn**: Represents a single interaction, including the message, urgency level, suggested next step, and patient data.
 
-### Red Flags Detection Module (`app/modules/recommender/red_flags.py`)
-- **Purpose:** 
-  Detects potential red flags in a patient's clinical information.
-- **Key Function:**
-  - `async def detect_red_flags(clinical_state: dict) -> bool`: Checks if any red flags are present in the clinical state.
-- **Inputs:** A dictionary representing the clinical state.
-- **Outputs:** Boolean indicating presence of red flags.
-- **Dependencies:** N/A
-- **Example:**
-  ```python
-  has_red_flags = await detect_red_flags(clinical_state)
-  ```
+### Dependencies
+Imports `Literal` from `typing` and `BaseModel` from `pydantic`.
 
-### Report Explainer Module (`app/modules/report_interpreter/explainer.py`)
-- **Purpose:** 
-  To provide an explanation of medical findings in layman's terms.
-- **Key Function:**
-  - `async def explain_findings(findings: dict) -> str`: Explains medical report findings.
-- **Inputs:** Dictionary of findings.
-- **Outputs:** Explanation string.
-- **Dependencies:** Uses `chat_completion` and `REPORT_EXPLANATION_PROMPT`.
-- **Example:**
-  ```python
-  explanation = await explain_findings(findings)
-  ```
+### Example Usage
+```python
+turn = ChatTurn(
+    message="I have a headache.",
+    urgency_level="none",
+    suggested_next_step="none"
+)
+```
 
-### Report Parser Module (`app/modules/report_interpreter/parser.py`)
-- **Purpose:** 
-  Parses uploaded medical reports to extract structured findings.
-- **Key Functions:**
-  - `async def parse_report(file: UploadFile, session_id: str) -> dict`: Parses the report and extracts findings.
-  - `def _extract_text(file_path: str, content_type: str) -> str`: Extracts text from a file based on the type.
-- **Inputs:** File to be parsed and session ID.
-- **Outputs:** Extracted findings as a dictionary.
-- **Dependencies:** `structured_completion`, `REPORT_EXTRACTION_PROMPT`, and `get_collection`.
-- **Example:**
-  ```python
-  findings = await parse_report(file, session_id)
-  ```
+## Chatbot Module: `followup.py`
 
-### File Service Module (`app/services/file_service.py`)
-- **Purpose:** 
-  Handles file operations such as saving and deleting uploaded files.
-- **Key Functions:**
-  - `def save_upload(filename: str, contents: bytes) -> str`: Saves a file.
-  - `def delete_upload(filename: str)`: Deletes a file.
-- **Inputs:** Filename and file content bytes.
-- **Outputs:** File path.
-- **Dependencies:** N/A.
-- **Example:**
-  ```python
-  path = save_upload("report.pdf", file_contents)
-  ```
+### Purpose
+Generates follow-up questions based on missing clinical data using an OpenAI client.
 
-### LLM Service Module (`app/services/llm.py`)
-- **Purpose:** 
-  Provides functions to create patient information and manage recommendations using language models.
-- **Key Functions:**
-  - `def build_patient_info(...) -> str`: Builds a formatted string of patient information.
-  - `async def get_recommendation(...) -> tuple`: Fetches recommendations based on patient information.
-- **Inputs:** Patient information details.
-- **Outputs:** Recommendation result, model used, usage statistics, and session ID.
-- **Dependencies:** Uses `structured_completion` and `save_session`.
-- **Example:**
-  ```python
-  recommendation = await get_recommendation(patient_info)
-  ```
+### Key Function
+- **`generate_followup(clinical_state: dict) -> str`**: Asynchronously creates follow-up queries based on clinical data provided.
 
-### OpenAI Client Module (`app/services/openai_client.py`)
-- **Purpose:** 
-  Facilitates communication with OpenAI's API for structured completions.
-- **Key Function:**
-  - `async def structured_completion(...) -> tuple`: Communicates with OpenAI's API to get structured completion responses.
-- **Inputs:** System prompts, user messages, response model type.
-- **Outputs:** Parsed result, model used, and usage statistics.
-- **Dependencies:** Uses OpenAI's `AsyncOpenAI`.
-- **Example:**
-  ```python
-  result, model, usage = await structured_completion(prompt, user_message, ResponseModel)
-  ```
+### Dependencies
+Imports `chat_completion` from `app.services.openai_client` and `FOLLOWUP_SYSTEM_PROMPT` from `app.prompts.chatbot_prompts`.
 
-### Storage Service Module (`app/services/storage.py`)
-- **Purpose:** 
-  Manages the storage of session data.
-- **Key Functions:**
-  - `def save_session(...) -> str`: Saves session data into a JSON file.
-  - `def load_session(session_id: str) -> dict | None`: Loads session data from storage.
-- **Inputs:** Session data, session ID.
-- **Outputs:** Session ID or session data.
-- **Dependencies:** Uses `Path`, `json`, and `uuid`.
-- **Example:**
-  ```python
-  session_id = save_session(patient_info, recommendation, model_used, usage)
-  ```
+### Example Usage
+```python
+followup_response = await generate_followup({"missing_info": ["age", "severity"]})
+```
 
-### Orchestrator Core Module (`app/core/orchestrator.py`)
-- **Purpose:** 
-  Orchestrates the chatbot interactions and manages session-based dialogues and recommendations.
-- **Key Function:**
-  - `async def handle_chat(request: ChatRequest) -> ChatResponse`: Handles chat logic, integrates modules for responses.
-- **Inputs:** Chat request object.
-- **Outputs:** Chat response object.
-- **Dependencies:** Uses multiple modules including `chatbot`, `recommender`, and session manager.
-- **Example:**
-  ```python
-  response = await handle_chat(chat_request)
-  ```
+## Chatbot Module: `handler.py`
 
-### Session Manager Core Module (`app/core/session_manager.py`)
-- **Purpose:** 
-  Manages user sessions and message history.
-- **Key Functions:**
-  - `async def load_or_create_session(...) -> dict`: Loads or initiates a new session for a user.
-  - `async def save_message(session_id, role: str, content: str)`: Saves user or assistant messages.
-- **Inputs:** Session ID, user ID, message details.
-- **Outputs:** Session data or confirmation.
-- **Dependencies:** Directly interacts with the database.
-- **Example:**
-  ```python
-  session_data = await load_or_create_session(session_id, user_id)
-  ```
+### Purpose
+Formulates a response to user input with recommendation and clinical state data.
 
-### State Extractor Core Module (`app/core/state_extractor.py`)
-- **Purpose:** 
-  Extracts the clinical state from patient messages.
-- **Key Function:**
-  - `async def extract_clinical_state(message: str, session: dict) -> dict`: Extracts structured state from messages.
-- **Inputs:** Patient message and session data.
-- **Outputs:** Extracted clinical state as a dictionary.
-- **Dependencies:** Uses `structured_completion`.
-- **Example:**
-  ```python
-  clinical_state = await extract_clinical_state(patient_message, session)
-  ```
+### Key Function
+- **`build_response(clinical_state: dict, recommendation: dict) -> str`**: Asynchronously constructs a response message.
+
+### Dependencies
+Imports `chat_completion` from `app.services.openai_client` and `RESPONSE_SYSTEM_PROMPT` from `app.prompts.chatbot_prompts`.
+
+### Example Usage
+```python
+response = await build_response({"symptoms": "headache"}, {"next_step": "teleconsult"})
+```
+
+## Recommender Module: `engine.py`
+
+### Purpose
+Houses the data model for health recommendations.
+
+### Key Classes
+- **SpecialistPathwayItem**: Details about necessary specialists and reasons.
+- **RecommendationResult**: Encapsulates recommendation results including the next step and urgency level.
+
+### Dependencies
+Imports `Literal` and `BaseModel` from `pydantic`.
+
+### Example Usage
+```python
+recommendation = RecommendationResult(
+    recommended_specialist="Neurologist",
+    primary_recommendation_summary="Consult a neurologist."
+)
+```
+
+## Recommender Module: `red_flags.py`
+
+### Purpose
+Detects critical symptoms indicative of emergencies within clinical data.
+
+### Key Function
+- **`detect_red_flags(clinical_state: dict) -> bool`**: Checks for the presence of emergency symptoms.
+
+### Example Usage
+```python
+has_red_flags = await detect_red_flags({"symptoms": "chest pain"})
+```
+
+## Report Interpreter Module: `engine.py`
+
+### Purpose
+Defines structures for lab values and report findings for medical interpretation.
+
+### Key Classes
+- **LabValue**: Describes a laboratory test result.
+- **ReportFindings**: Provides a detailed summary of a medical report analysis.
+
+### Dependencies
+Imports `Literal` and `BaseModel` from `pydantic`.
+
+### Example Usage
+```python
+report = ReportFindings(
+    report_type="Complete Blood Count",
+    overall_summary="All values within normal range."
+)
+```
+
+## Report Interpreter Module: `explainer.py`
+
+### Purpose
+Explains findings from a report using an OpenAI completion call.
+
+### Key Function
+- **`explain_findings(findings: dict) -> str`**: Provides a plain-language explanation of report findings.
+
+### Dependencies
+Imports `chat_completion` from `app.services.openai_client` and `REPORT_EXPLANATION_PROMPT`.
+
+### Example Usage
+```python
+explanation = await explain_findings({"overall_summary": "Normal results."})
+```
+
+## Report Interpreter Module: `parser.py`
+
+### Purpose
+Parses text and images from medical reports, primarily PDFs.
+
+### Key Functions
+- **`extract_text(file_path: str, content_type: str) -> str`**: Extracts text based on file type.
+- **`extract_images_from_pdf(file_path: str) -> list[str]`**: Converts PDF pages to images.
+
+### Dependencies
+Conditional imports of `fitz`, `pdfplumber`.
+
+### Example Usage
+```python
+text = extract_text("/path/to/report.pdf", "application/pdf")
+```
+
+## Chat Service: `chat_service.py`
+
+### Purpose
+Handles sessions and user interactions within the chatting system.
+
+### Key Functions
+- **`start_chat(report_id: str | None = None) -> str`**: Initializes a chat session.
+- **`send_message(chat_id: str, user_text: str) -> tuple`**: Processes a message and updates the session.
+
+### Dependencies
+Imports from `uuid`, `datetime`, `json` and several `app` modules.
+
+### Example Usage
+```python
+chat_id = start_chat()
+response = await send_message(chat_id, "I have a fever.")
+```
+
+## File Service: `file_service.py`
+
+### Purpose
+Manages file uploads and deletions for the system.
+
+### Key Functions
+- **`save_upload(filename: str, contents: bytes) -> str`**: Saves a file to the server.
+- **`delete_upload(filename: str)`**: Deletes a specified file.
+
+### Dependencies
+Imports from `os` and `app.config`.
+
+### Example Usage
+```python
+file_path = save_upload("test_report.pdf", b"PDF binary content")
+```
+
+## LLM Service: `llm.py`
+
+### Purpose
+Interacts with an AI model to generate structured health recommendations.
+
+### Key Functions
+- **`build_patient_info(...) -> str`**: Formats a patient profile string.
+- **`get_recommendation(patient_info: str) -> tuple`**: Obtains a health recommendation.
+
+### Dependencies
+Imports from `app.services.openai_client` and `app.modules.recommender.engine`.
+
+### Example Usage
+```python
+patient_info = build_patient_info(30, "female", "moderate", 5, "cough")
+recommendation = await get_recommendation(patient_info)
+```
+
+## Report Service: `report_service.py`
+
+### Purpose
+Processes and interprets medical reports, saving the analysis.
+
+### Key Functions
+- **`save_upload(...) -> tuple[str, str]`**: Saves uploaded file data.
+- **`interpret_report(...) -> tuple`**: Analyzes the contents of a medical report.
+
+### Dependencies
+Imports from `os`, `fastapi`, and several `app.modules`.
+
+### Example Usage
+```python
+(file_path, _) = await save_upload(upload_file)
+findings, _, _, _ = await interpret_report(file_path, "application/pdf", "report.pdf")
+```
+
+## Storage Service: `storage.py`
+
+### Purpose
+Provides persistent storage capabilities for sessions and reports.
+
+### Key Functions
+- **`save_session(...) -> str`**: Stores a session record.
+- **`load_session(session_id: str) -> dict | None`**: Retrieves a session record by ID.
+
+### Dependencies
+Imports from `json`, `uuid`, and `pathlib`.
+
+### Example Usage
+```python
+session_id = save_session(patient_info, recommendation, "model_v1", usage_data)
+session = load_session(session_id)
+```
 
 ## Data Flow
-1. **Patient Interaction**: A user sends a message, which is processed by `handle_chat` in the `orchestrator` core module.
-2. **Session Management**: Load or create a session using `session_manager`.
-3. **State Extraction**: Extract clinical state via the `state_extractor`.
-4. **Red Flag Detection**: Check for any red flags with `recommender/red_flags`.
-5. **Follow-Up or Recommendation**:
-   - If there are red flags, respond urgently.
-   - If information is missing, generate a follow-up using `chatbot/followup`.
-   - Otherwise, get recommendation via `llm`.
-6. **Response Building**: Construct a response through the `chatbot/handler`.
-7. **Session Update**: Store responses in the session using `session_manager`.
-8. **Output**: Return the response to the user as defined in `ChatResponse`.
 
-This modular approach ensures scalability, maintainability, and clear separation of concerns across the various responsibilities of each component.
+The data flow begins with a user interacting via the chatbot service, which collects symptom information and triggers follow-up actions. The chatbot's collected data is used in the recommender engine to provide health-related advice. If a user uploads a medical report, it is parsed and interpreted by the report interpreter module. These processes interact with external AI models through the `openai_client`. All sessions and report data are persistently stored using the storage service.

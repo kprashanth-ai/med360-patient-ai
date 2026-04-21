@@ -1,147 +1,207 @@
-> Auto-generated on 2026-04-21 14:50 by `scripts/update_docs.py`. Do not edit manually.
+> Auto-generated on 2026-04-21 17:10 by `scripts/update_docs.py`. Do not edit manually.
 
 # API Reference
 
-Welcome to the API reference for Med360 Patient AI. This API provides AI-driven recommendations, chat services, and report analysis for the Med360 patient application. The base URL pattern for this API is `/api/v1`.
+Welcome to the API reference documentation for the Med360 Patient AI. This API provides an AI-powered backend for handling chat sessions, making recommendations, and processing reports for the Med360 patient application. All endpoints are prefixed with `/api/v1`.
 
 ## Endpoints
 
-### POST /chat
+### POST /api/v1/chat/sessions
 
-#### Description
-Initiate a chat session or continue an existing conversation with the AI. Use this endpoint to get quick responses to user inquiries during a session.
+**Description**: Initiate a new chat session. Optionally associates a report with the session if a `report_id` is provided. Use this endpoint to begin a user interaction session with the AI.
 
-#### Request Body
-| Field     | Type   | Required | Description                            |
-|-----------|--------|----------|----------------------------------------|
-| user_id   | string | Yes      | Unique identifier for the user.        |
-| session_id| string | No       | Optional session ID to continue a chat.|
-| message   | string | Yes      | User's message to the chat.            |
+**Request Body**:
 
-#### Response Body
-| Field     | Type    | Description                                  |
-|-----------|---------|----------------------------------------------|
-| session_id| string  | ID of the session.                           |
-| message   | string  | AI response to the user's message.           |
-| urgent    | boolean | Indicates if the response is marked urgent.  |
+| Field     | Type   | Required | Description                |
+|-----------|--------|----------|----------------------------|
+| report_id | string | No       | ID of the report to attach |
 
-#### Example Request
+**Response Body**:
+
+| Field   | Type   | Description          |
+|---------|--------|----------------------|
+| chat_id | string | Unique ID for chat   |
+
+**Example Request**:
 ```bash
-curl -X POST "http://localhost/api/v1/chat" \
--H "Content-Type: application/json" \
--d '{
-  "user_id": "12345",
-  "session_id": "abcde",
-  "message": "What should I do if I feel dizzy?"
-}'
+curl -X POST "http://example.com/api/v1/chat/sessions" -H "Content-Type: application/json" -d '{"report_id": "12345"}'
 ```
 
-#### Example Response
+**Example Response**:
 ```json
 {
-  "session_id": "abcde",
-  "message": "Please make sure to sit or lie down and take rest.",
-  "urgent": false
+  "chat_id": "abc123"
 }
 ```
 
----
+### POST /api/v1/chat/sessions/{chat_id}/message
 
-### POST /recommend
+**Description**: Send a message to an existing chat session. Use this to interact with the AI within a session.
 
-#### Description
-Get a personalized recommendation based on user demographic and symptom information. This service uses AI to assess the situation and provide tailored advice.
+**Request Body**:
 
-#### Request Body
-| Field        | Type    | Required | Description                              |
-|--------------|---------|----------|------------------------------------------|
-| age          | integer | Yes      | Age of the user (1-120).                 |
-| gender       | string  | Yes      | User's gender ("male", "female", "other").|
-| severity     | string  | Yes      | Severity level of the symptoms. ("low", "medium", "high").|
-| duration_days| integer | Yes      | Duration of symptoms in days (1-3650).   |
-| symptoms     | string  | Yes      | Detailed description of symptoms (10-1000 characters).|
+| Field   | Type   | Required | Description          |
+|---------|--------|----------|----------------------|
+| message | string | Yes      | User's message       |
 
-#### Response Body
-| Field           | Type                     | Description                      |
-|-----------------|--------------------------|----------------------------------|
-| session_id      | string                   | Session identifier.              |
-| recommendation  | RecommendationResponse   | AI-generated healthcare recommendation.|
+**Response Body**:
 
-#### Example Request
+| Field           | Type   | Description                                  |
+|-----------------|--------|----------------------------------------------|
+| chat_id         | string | ID of the chat session                       |
+| model_used      | string | Model identifier used to process the message |
+| usage           | dict   | Information about model usage                |
+| turn            | dict   | Details of the chat turn                     |
+| recommendation  | dict   | AI recommendation, if any                    |
+
+**Example Request**:
 ```bash
-curl -X POST "http://localhost/api/v1/recommend" \
--H "Content-Type: application/json" \
--d '{
-  "age": 30,
-  "gender": "female",
-  "severity": "medium",
-  "duration_days": 5,
-  "symptoms": "Persistent headache and nausea"
-}'
+curl -X POST "http://example.com/api/v1/chat/sessions/abc123/message" -H "Content-Type: application/json" -d '{"message": "Hello!"}'
 ```
 
-#### Example Response
+**Example Response**:
 ```json
 {
-  "session_id": "xyz123",
-  "recommendation": {
-    "session_id": "xyz123",
-    "urgency_level": "moderate",
-    "next_step": "teleconsult",
-    "suggested_specialty": "neurology",
-    "patient_message": "It is recommended to have a teleconsultation with a neurology specialist.",
-    "reasoning": "Symptoms consistent with moderate urgency requiring professional consultation."
-  }
+  "chat_id": "abc123",
+  "model_used": "gpt-4",
+  "usage": {"tokens": 50},
+  "turn": {...},
+  "recommendation": {...}
 }
 ```
 
----
+### POST /api/v1/chat/sessions/{chat_id}/report
 
-### POST /reports/upload
+**Description**: Attach a report to an ongoing chat session. Useful for incorporating additional contextual data into the chat.
 
-#### Description
-Upload a medical report file for AI analysis. The service parses the report and provides explanations of findings linked to a specific session.
+**Request Body**:
 
-#### Request Body
-| Field     | Type       | Required | Description                      |
-|-----------|------------|----------|----------------------------------|
-| session_id| string     | Yes      | Session ID associated with the report.|
-| file      | UploadFile | Yes      | File upload of the medical report.|
+| Field     | Type   | Required | Description       |
+|-----------|--------|----------|-------------------|
+| report_id | string | Yes      | ID of the report  |
 
-#### Response Body
-| Field     | Type   | Description                                         |
-|-----------|--------|-----------------------------------------------------|
-| session_id| string | Session ID to which the report is associated.       |
-| findings  | dict   | Parsed findings from the report.                    |
-| explanation| string | Explanation of the findings by the AI.             |
+**Response Body**:
 
-#### Example Request
+| Field       | Type   | Description             |
+|-------------|--------|-------------------------|
+| chat_id     | string | ID of the chat session  |
+| report_type | string | Type of attached report |
+| urgency     | string | Urgency level           |
+
+**Example Request**:
 ```bash
-curl -X POST "http://localhost/api/v1/reports/upload" \
--F "session_id=abc123" \
--F "file=@path_to_report_file.pdf"
+curl -X POST "http://example.com/api/v1/chat/sessions/abc123/report" -H "Content-Type: application/json" -d '{"report_id": "67890"}'
 ```
 
-#### Example Response
+**Example Response**:
 ```json
 {
-  "session_id": "abc123",
-  "findings": {
-    "blood_pressure": "normal",
-    "cholesterol": "high"
-  },
-  "explanation": "The cholesterol level is high, suggesting dietary adjustments."
+  "chat_id": "abc123",
+  "report_type": "Blood test",
+  "urgency": "High"
 }
 ```
 
----
+### GET /api/v1/chat/sessions/{chat_id}
 
-### Error Responses
+**Description**: Retrieve details about a particular chat session. This is useful for reviewing past interactions.
 
-| Status Code | Description              |
-|-------------|--------------------------|
-| 400         | Bad Request, invalid input data. |
-| 404         | Not Found, resource does not exist.|
-| 500         | Internal Server Error, something went wrong on the server.|
+**Example Request**:
+```bash
+curl -X GET "http://example.com/api/v1/chat/sessions/abc123"
+```
 
-This documentation provides concise and precise information about how to interact with the Med360 Patient AI API, allowing developers to efficiently implement and use these capabilities within their applications.
+### GET /api/v1/chat/sessions
+
+**Description**: List recent chat sessions. Use this to browse through active or recent chats.
+
+**Example Request**:
+```bash
+curl -X GET "http://example.com/api/v1/chat/sessions?limit=20"
+```
+
+### POST /api/v1/recommend
+
+**Description**: Get a health-related recommendation based on provided patient symptoms and details.
+
+**Request Body**:
+
+| Field         | Type    | Required | Description                  |
+|---------------|---------|----------|------------------------------|
+| age           | integer | Yes      | Age of the patient (1-120)   |
+| gender        | string  | Yes      | Gender of the patient        |
+| severity      | string  | Yes      | Severity level of symptoms   |
+| duration_days | integer | Yes      | Duration of symptoms (days)  |
+| symptoms      | string  | Yes      | Detailed patient symptoms    |
+
+**Response Body**:
+
+| Field          | Type   | Description                      |
+|----------------|--------|----------------------------------|
+| session_id     | string | Unique session ID                |
+| recommendation | dict   | Health recommendation            |
+
+**Example Request**:
+```bash
+curl -X POST "http://example.com/api/v1/recommend" -H "Content-Type: application/json" -d '{"age": 30, "gender": "female", "severity": "medium", "duration_days": 5, "symptoms": "Persistent cough and fever"}'
+```
+
+**Example Response**:
+```json
+{
+  "session_id": "rec123",
+  "recommendation": {...}
+}
+```
+
+### POST /api/v1/reports/upload
+
+**Description**: Upload a report file (PDF or plain-text) to the server for processing.
+
+**Response Body**:
+
+| Field       | Type   | Description                        |
+|-------------|--------|------------------------------------|
+| report_id   | string | ID of the uploaded report          |
+| model_used  | string | Model used for interpretation      |
+| usage       | dict   | Information about model usage      |
+| findings    | dict   | Interpreted findings from the report|
+
+**Example Request**:
+```bash
+curl -X POST "http://example.com/api/v1/reports/upload" -F 'file=@path/to/report.pdf'
+```
+
+**Example Response**:
+```json
+{
+  "report_id": "rep123",
+  "model_used": "clarity-ai",
+  "usage": {"tokens": 100},
+  "findings": {...}
+}
+```
+
+### GET /api/v1/reports
+
+**Description**: Retrieve a list of available reports.
+
+**Example Request**:
+```bash
+curl -X GET "http://example.com/api/v1/reports?limit=20"
+```
+
+### GET /api/v1/reports/{report_id}
+
+**Description**: Retrieve details of a specific report by ID.
+
+**Example Request**:
+```bash
+curl -X GET "http://example.com/api/v1/reports/rep123"
+```
+
+## Error Responses
+
+- **404 Not Found**: Returned when a specified session or chat is not found.
+- **415 Unsupported Media Type**: Returned when attempting to upload files that are not supported formats.
+- **Validation Error**: Occurs when request data does not meet required validation rules.

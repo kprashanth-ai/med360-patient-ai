@@ -1,9 +1,6 @@
 # Build Progress
 
-## How to use this file
-- Update status after each working session
-- Claude reads this to know where to pick up
-- Keep entries short — just what changed and what's next
+> Update after each session. Claude reads this to know where to pick up.
 
 ---
 
@@ -14,59 +11,61 @@
 
 ---
 
-## Step 1 — Foundation
+## Phase 1 — Foundation
 - [x] Project structure scaffolded
-- [x] `.venv` created
-- [x] `requirements.txt` installed (motor/pymongo removed — using JSON files for now)
-- [x] Storage decision: JSON files in `data/`, migrate to MongoDB later
-- [ ] `.env` file created with real keys
-- [ ] FastAPI app boots (`uvicorn app.main:app --reload`)
+- [x] `.venv` created, requirements installed
+- [x] `.env` configured with real OpenAI key
+- [x] Storage decision: JSON files in `data/`, MongoDB deferred
+- [x] FastAPI app boots — `uvicorn app.main:app --reload`
 
-## Step 2 — Recommender (current)
-- [x] `openai_client.py` — `structured_completion()` using OpenAI native `parse()`
-- [x] `recommender/engine.py` — `recommend(symptoms)` → `RecommendationResult`
-- [x] `POST /api/v1/recommend` endpoint wired
-- [x] 3 tests written (schema, emergency, low urgency)
-- [x] `.env` set up with real key
-- [x] Tests passing (3/3) — schema, emergency escalation, low urgency
-- [ ] Manual test via `/docs`
+## Phase 2 — Recommender
+- [x] `openai_client.py` — `structured_completion()` using `beta.chat.completions.parse()`
+- [x] `recommender/engine.py` — `RecommendationResult` + `SpecialistPathwayItem` Pydantic schemas
+- [x] `llm.py` — `get_recommendation()`, `build_patient_info()`, cost tracking
+- [x] `storage.py` — `save_session()`, `load_session()`, `list_sessions()`
+- [x] `tracker.py` — in-memory usage totals
+- [x] `POST /api/v1/recommend` + `GET /api/v1/sessions` + `GET /api/v1/sessions/{id}`
+- [x] Input validation: age 1-120, gender Literal, severity Literal, duration 1-3650, symptoms 10-1000 chars
+- [x] CLI `recommend` subcommand with animated spinner + colour-coded urgency output
+- [x] 15 tests passing (schema, session saving, usage tracking, emergency escalation, low urgency, all validation)
+- [x] Battle test: 21 scenarios across 7 categories — all passing
 
-## Step 2 — Session Management
-- [ ] `session_manager.py` — create session
-- [ ] `session_manager.py` — load session by ID
-- [ ] `session_manager.py` — save message to session
-- [ ] Test: create session, add messages, reload and verify
+## Phase 3 — Report Interpreter
+- [x] `report_interpreter/engine.py` — `ReportFindings` + `LabValue` schemas
+- [x] `report_interpreter/parser.py` — `extract_text()`, `extract_images_from_pdf()`, `ImageBasedPDFError`
+- [x] `report_prompts.py` — `REPORT_EXTRACTION_PROMPT`
+- [x] `report_service.py` — `save_upload()`, `interpret_report()` with vision fallback for scanned PDFs
+- [x] `storage.py` — `save_report()`, `load_report()`, `list_reports()`
+- [x] `POST /api/v1/reports/upload` (PDF + TXT, 415 for other types)
+- [x] `GET /api/v1/reports` + `GET /api/v1/reports/{id}`
+- [x] CLI `interpret` subcommand — prompts for file path, colour-coded findings
+- [x] Vision fallback: scanned PDFs rendered to images via pymupdf, sent to GPT-4o vision
+- [x] 14 tests passing
 
-## Step 3 — Clinical State Extraction
-- [ ] `state_extractor.py` — send patient message to OpenAI, get structured JSON back
-- [ ] `state_extractor.py` — persist state to MongoDB
-- [ ] Test: send "I have a headache for 2 days" → verify structured state returned
+## Phase 4 — Conversational Chat (Medi)
+- [x] `chatbot/engine.py` — `ChatTurn` + `CollectedPatientData` schemas
+- [x] `chatbot_prompts.py` — `CHAT_SYSTEM_PROMPT` with plain-text style + follow-up question instructions + recommendation trigger logic
+- [x] `openai_client.py` — `chat_completion()` for multi-turn history
+- [x] `storage.py` — `save_chat()`, `load_chat()`, `list_chats()`
+- [x] `chat_service.py` — `start_chat()`, `send_message()`, `attach_report()`
+- [x] `POST /api/v1/chat/sessions` — create chat
+- [x] `POST /api/v1/chat/sessions/{id}/message` — send message, returns `ChatTurn` + optional `RecommendationResult`
+- [x] `POST /api/v1/chat/sessions/{id}/report` — attach interpreted report to chat context
+- [x] `GET /api/v1/chat/sessions/{id}` + `GET /api/v1/chat/sessions`
+- [x] CLI `chat` subcommand — interactive REPL, `report <path>` mid-chat, emergency banner, urgency badges
+- [x] Smart follow-up: Medi collects 5 fields (age, gender, severity, duration, symptoms) then fires full recommender, renders rich panel inline
+- [x] Report Q&A: once a report is loaded, all report questions answered from findings context
+- [x] 13 tests passing
 
-## Step 4 — Chatbot (follow-up questions)
-- [ ] `followup.py` — given missing_info, generate one follow-up question
-- [ ] `handler.py` — build patient-friendly response
-- [ ] Test: incomplete state → follow-up question generated
-
-## Step 5 — Red Flag Detection
-- [ ] `red_flags.py` — keyword + state-based detection
-- [ ] Test: "chest pain and difficulty breathing" → urgent=True
-
-## Step 6 — Care Recommender
-- [ ] `engine.py` — send clinical state to OpenAI, get structured recommendation
-- [ ] Test: complete state → recommendation with urgency + next_step
-
-## Step 7 — Report Interpreter
-- [ ] `parser.py` — extract text from PDF
-- [ ] `explainer.py` — explain findings in plain language
-- [ ] Test: upload a sample blood report → structured findings + explanation
-
-## Step 8 — Orchestrator + API wiring
-- [ ] `orchestrator.py` — tie all modules together
-- [ ] `/chat` endpoint end-to-end test
-- [ ] `/reports/upload` endpoint end-to-end test
-- [ ] `/recommendations/{session_id}` endpoint end-to-end test
+## Total tests
+- 42 passing, 0 failing
 
 ---
 
-## Decisions log
-See [[DECISIONS]]
+## What's next (candidate for next session)
+- [ ] **Deployment** — run as a local server so frontend team can integrate
+- [ ] **Auth header** — simple API key check for frontend integration
+- [ ] **Chat history truncation** — cap message history at N tokens to avoid context overflow on long chats
+- [ ] **Report in chat at start** — allow `POST /chat/sessions` to accept a report file directly, not just a report_id
+- [ ] **Streaming responses** — stream Medi's reply token-by-token for better CLI/frontend feel
+- [ ] **MongoDB migration** — swap `storage.py` when ready

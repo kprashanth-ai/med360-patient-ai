@@ -32,9 +32,13 @@ MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 # ── file collection ────────────────────────────────────────────────────────────
 
 GROUPS = {
-    "api":     ["app/api/v1/", "app/schemas/", "app/main.py"],
-    "modules": ["app/modules/", "app/services/", "app/core/", "app/prompts/", "app/tracker.py"],
-    "models":  ["app/models/", "app/schemas/", "app/modules/recommender/engine.py"],
+    "api":     ["app/api/v1/", "app/main.py"],
+    "modules": ["app/modules/", "app/services/", "app/prompts/", "app/tracker.py"],
+    "models":  [
+        "app/modules/recommender/engine.py",
+        "app/modules/report_interpreter/engine.py",
+        "app/modules/chatbot/engine.py",
+    ],
 }
 
 

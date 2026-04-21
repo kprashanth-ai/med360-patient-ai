@@ -1,52 +1,48 @@
-import os
-from fastapi import UploadFile
-from app.config import settings
-from app.services.openai_client import structured_completion
-from app.prompts.report_prompts import REPORT_EXTRACTION_PROMPT
-from app.database import get_collection
-from bson import ObjectId
-from datetime import datetime, timezone
+import base64
+from pathlib import Path
+
+_MAX_VISION_PAGES = 10
 
 
-async def parse_report(file: UploadFile, session_id: str) -> dict:
-    os.makedirs(settings.upload_dir, exist_ok=True)
-    file_path = os.path.join(settings.upload_dir, file.filename)
-
-    contents = await file.read()
-    with open(file_path, "wb") as f:
-        f.write(contents)
-
-    text = _extract_text(file_path, file.content_type)
-
-    findings = await structured_completion(
-        system_prompt=REPORT_EXTRACTION_PROMPT,
-        user_message=text,
-    )
-
-    record = {
-        "_id": ObjectId(),
-        "session_id": ObjectId(session_id),
-        "filename": file.filename,
-        "findings": findings,
-        "created_at": datetime.now(timezone.utc),
-    }
-    await get_collection("reports").insert_one(record)
-    await get_collection("report_findings").insert_one(
-        {"session_id": ObjectId(session_id), **findings}
-    )
-
-    return findings
+class ImageBasedPDFError(Exception):
+    pass
 
 
-def _extract_text(file_path: str, content_type: str) -> str:
-    if "pdf" in content_type:
-        import pdfplumber
-        with pdfplumber.open(file_path) as pdf:
-            return "\n".join(page.extract_text() or "" for page in pdf.pages)
+def extract_text(file_path: str, content_type: str) -> str:
+    path = Path(file_path)
 
-    if "image" in content_type:
-        # Pass image path to OpenAI vision — handled in openai_client
-        return f"IMAGE_FILE:{file_path}"
+    if not path.exists():
+        raise FileNotFoundError(f"Report file not found: {file_path}")
 
-    with open(file_path, "r", errors="ignore") as f:
-        return f.read()
+    if "pdf" in content_type or path.suffix.lower() == ".pdf":
+        return _extract_pdf(file_path)
+
+    if "image" in content_type or path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
+        raise NotImplementedError("Image reports not supported yet — please upload a PDF.")
+
+    return path.read_text(encoding="utf-8", errors="ignore")
+
+
+def extract_images_from_pdf(file_path: str) -> list[str]:
+    """Render each PDF page to a base64 PNG (max _MAX_VISION_PAGES pages)."""
+    import fitz  # pymupdf
+    doc = fitz.open(file_path)
+    images = []
+    for page in doc.pages(0, min(len(doc), _MAX_VISION_PAGES)):
+        pix = page.get_pixmap(dpi=150)
+        images.append(base64.b64encode(pix.tobytes("png")).decode())
+    return images
+
+
+def _extract_pdf(file_path: str) -> str:
+    import pdfplumber
+    pages = []
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                pages.append(text.strip())
+    full_text = "\n\n".join(pages)
+    if not full_text.strip():
+        raise ImageBasedPDFError("PDF contains no selectable text — rendering pages for vision extraction.")
+    return full_text

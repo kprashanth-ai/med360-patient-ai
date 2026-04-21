@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.v1 import recommendations
+from app.api.v1 import chat, recommendations, reports
 
 app = FastAPI(
     title="Med360 Patient AI",
@@ -8,6 +8,8 @@ app = FastAPI(
 )
 
 app.include_router(recommendations.router, prefix="/api/v1", tags=["Recommender"])
+app.include_router(reports.router, prefix="/api/v1", tags=["Reports"])
+app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 
 
 @app.get("/health")
